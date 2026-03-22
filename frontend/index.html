@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <input type="text" id="searchInput">
+    <ul id="songList"></ul>
+    <audio src="" id="player" controls></audio>
+</body>
+
+<script>
+    async function fetchSongs() {
+        const response = await fetch('/api/songs');
+        const data = await response.json();
+        const songList = document.getElementById('songList');
+        const player = document.getElementById('player');
+        const searchInput = document.getElementById('searchInput'); // grab the input in search bar and listen
+    
+        data.songs.forEach(song => {
+            const li = document.createElement("li");    // create new <li> for each song
+            li.innerText = song.title;  // set the title, the .title custom property defined in backend specifically /api/songs route
+            // the click event
+            li.onclick = () => {
+                player.src = "/api/play/" + song.id;
+                player.play();
+            };
+            // the injection: add it to <ul> bucket
+            songList.appendChild(li);
+        });
+
+        searchInput.addEventListener('input', (event) => {
+            // get what the user type and convert to lowercase for easy matching
+            const searchTerm = event.target.value.toLowerCase();
+
+            // the target list (grab the actual <li> elements)
+            const allSongs = songList.getElementsByTagName('li');
+
+            // filter loop
+            for (let i = 0; i < allSongs.length; i++){
+                const li = allSongs[i];
+
+                // extract the title and normalize it
+                const songTitle = li.innerText.toLowerCase();
+                
+                if (songTitle.includes(searchTerm)) {
+                    li.style.display = ''; // show relevant songs
+                }
+                else {
+                    li.style.display = 'none'; // hide unrelevant songs
+                }
+            }
+        });
+    }
+
+    /* This is the second approach I get from internet. Which one is better approach compared to the puzzle?
+    let allSongs = []; // 1. Global variable to "remember" the songs
+
+    async function fetchSongs() {
+        const response = await fetch('/api/songs');
+        const data = await response.json();
+        allSongs = data.songs; // Save them here
+        renderSongs(allSongs); // Initial display
+    }
+
+    // 2. The Hook: Grab the input and listen
+    const searchInput = document.getElementById('searchInput');
+
+    searchInput.addEventListener('input', (event) => {
+        // Get what the user typed (converted to lowercase for easy matching)
+        const searchTerm = event.target.value.toLowerCase();
+
+        // The Filter: Find songs that match the search
+        const filteredSongs = allSongs.filter(song => 
+            song.title.toLowerCase().includes(searchTerm)
+        );
+
+        // Re-render the list with only the matches
+        renderSongs(filteredSongs);
+    });
+
+    // Helper function to handle the "Injection" logic from the previous puzzle
+    function renderSongs(songsToDisplay) {
+        const songList = document.getElementById('songList');
+        songList.innerHTML = ''; // Clear the old list first!
+
+        songsToDisplay.forEach(song => {
+            const li = document.createElement("li");
+            li.innerText = song.title;
+            li.onclick = () => {
+                player.src = "/api/play/" + song.id;
+                player.play();
+            };
+            songList.appendChild(li);
+        });
+    }
+    */
+    fetchSongs();
+</script>
+
+</html>
