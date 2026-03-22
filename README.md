@@ -24,6 +24,6 @@ The primary goal of this project is to practice building clean client-server arc
 2. Install dependencies using `uv sync`.
 3. Start the server:
    ```bash
-   uv run uvicorn main:app --reload
+   uv run uvicorn app.main:app --reload
    ```
 4. Open `http://127.0.0.1:8000` in your browser.
