@@ -3,100 +3,303 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="./assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <title>Document</title>
 </head>
 <body>
+    <div id="blurBg"></div>
     <input type="text" id="searchInput">
+    <div id="filterChips">
+        <button class="chip active" data-filter="all">All</button>
+        <button class="chip" data-filter="artist">Artist</button>
+        <button class="chip" data-filter="title">Title</button>
+        <button class="chip" data-filter="tags">Tags</button>
+    </div>
     <ul id="songList"></ul>
-    <audio src="" id="player" controls></audio>
+    <audio src="" id="player"></audio>
+
+    <div id="stickyPlayer">
+        <button id="closeBtn" class="max-only"><i class="fa-solid fa-xmark"></i></button>
+
+        <div id="playerInfo">
+            <img id="playerImg">
+            <div class="player-text">
+                <h4 id="playerTitle">Select a song</h4>
+                <p id="playerArtist">-</p>
+            </div>
+        </div>
+
+        <audio src="" id="player"></audio>
+        
+        <div id="controlCenter">
+            <div id="progressWrapper">
+                <span id="currentTime">0:00</span>
+                <input type="range" id="progressBar" value="0" step="1">
+                <span id="totalTime">0:00</span>
+            </div>
+
+            <div id="mediaControls">
+                <button id="randomBtn"><i class="fa-solid fa-shuffle"></i></button>
+                <button id="prevBtn"><i class="fa-solid fa-backward-step"></i></button>
+                <button id="playPauseBtn"><i class="fa-solid fa-play"></i></button>
+                <button id="nextBtn"><i class="fa-solid fa-forward-step"></i></button>
+                <button id="loopBtn"><i class="fa-solid fa-repeat"></i></button>
+            </div>
+
+            <div id="volumeWrapper">
+                <i class="fa-solid fa-volume-low"></i>
+                <input type="range" id="volumeSlider" min="0" max="1" step="0.01" value="1">
+                <i class="fa-solid fa-volume-high"></i>
+            </div>
+        </div>
+
+        <button id="maximizeBtn" class="min-only"><i class="fa-solid fa-expand"></i></button>
+    </div>
 </body>
 
 <script>
+    let currentFilter = 'all';
+    let currentSongLi = null;
+    const player = document.getElementById('player'); // grab the hidden audio element
+
+    function performSearch() {
+        const searchTerm = searchInput.value.toLowerCase();
+        const allSongs = songList.getElementsByTagName('li');
+
+        for (let i = 0; i < allSongs.length; i++) {
+            const li = allSongs[i];
+            const t = li.dataset.title;
+            const a = li.dataset.artist;
+            const tags = li.dataset.tags;
+
+            let isMatch = false;
+            let weight = 4; // default lowest priority
+
+            if (currentFilter === 'all') { // check based on the active filter
+                if (a.includes(searchTerm)) { isMatch = true; weight = 1;} // highest priority
+                else if (t.includes(searchTerm)) { isMatch = true; weight = 2;}
+                else if (tags.includes(searchTerm)) { isMatch = true; weight = 3;}
+            }
+            else if (currentFilter === 'artist' && a.includes(searchTerm)) {
+                isMatch = true; weight = 1;
+            }
+            else if (currentFilter === 'title' && t.includes(searchTerm)) {
+                isMatch = true; weight = 1;
+            }
+            else if (currentFilter === 'tags' && tags.includes(searchTerm)) {
+                isMatch = true; weight = 1;
+            }
+
+            if (isMatch || searchTerm === '') {
+                li.style.display = '';
+                li.style.order = weight; // set the order based on the weight
+            }
+            else {
+                li.style.display = 'none';
+            }
+        }
+    }
+
     async function fetchSongs() {
         const response = await fetch('/api/songs');
         const data = await response.json();
         const songList = document.getElementById('songList');
-        const player = document.getElementById('player');
         const searchInput = document.getElementById('searchInput'); // grab the input in search bar and listen
     
         data.songs.forEach(song => {
             const li = document.createElement("li");    // create new <li> for each song
-            li.innerText = song.title;  // set the title, the .title custom property defined in backend specifically /api/songs route
+            li.className = "song-card";
+            li.dataset.title = song.title.toLowerCase();
+            li.dataset.artist = song.artist.toLowerCase();
+            li.dataset.tags = song.tags.toLowerCase();
+            li.innerHTML = `
+                <img src="/api/image/${song.id}" class="song-img" loading="lazy" onerror="this.src=''">
+                <div class="song-info">
+                    <h3>${song.title}</h3>
+                    <p>${song.artist}</p>
+                </div>
+            `;
+
             // the click event
             li.onclick = () => {
+                currentSongLi = li;
                 player.src = "/api/play/" + song.id;
                 player.play();
+
+                const icon = document.querySelector('#playPauseBtn i');
+
+                document.getElementById('blurBg').style.backgroundImage = `url('/api/image/${song.id}')`;
+                document.getElementById('playerTitle').innerText = song.title;
+                document.getElementById('playerArtist').innerText = song.artist;
+                document.getElementById('playerImg').src = `/api/image/${song.id}`;
+                icon.className = "fa-solid fa-pause"; 
+                document.getElementById('loopBtn').classList.toggle('active-btn', player.loop);
             };
             // the injection: add it to <ul> bucket
             songList.appendChild(li);
         });
+        
+        const chips = document.querySelectorAll('.chip');
 
-        searchInput.addEventListener('input', (event) => {
-            // get what the user type and convert to lowercase for easy matching
-            const searchTerm = event.target.value.toLowerCase();
+        chips.forEach(chip => {
+            chip.addEventListener('click', (e) => {
+                chips.forEach(c => c.classList.remove('active')); // remove active class from all chips, add to the clicked one
+                e.target.classList.add('active');
 
-            // the target list (grab the actual <li> elements)
-            const allSongs = songList.getElementsByTagName('li');
-
-            // filter loop
-            for (let i = 0; i < allSongs.length; i++){
-                const li = allSongs[i];
-
-                // extract the title and normalize it
-                const songTitle = li.innerText.toLowerCase();
-                
-                if (songTitle.includes(searchTerm)) {
-                    li.style.display = ''; // show relevant songs
-                }
-                else {
-                    li.style.display = 'none'; // hide unrelevant songs
-                }
-            }
+                currentFilter = e.target.dataset.filter; // update the filter state and re-trigger the search
+                performSearch();
+            });
         });
+        searchInput.addEventListener('input', performSearch);
     }
+    
+    const playPauseBtn = document.getElementById('playPauseBtn');
+    const volumeSlider = document.getElementById('volumeSlider');
 
-    /* This is the second approach I get from internet. Which one is better approach compared to the puzzle?
-    let allSongs = []; // 1. Global variable to "remember" the songs
+    // wire up the play/pause logic
+    playPauseBtn.addEventListener('click', () => {
+        if (player.src === "") return; // do nothing if no song is loaded
 
-    async function fetchSongs() {
-        const response = await fetch('/api/songs');
-        const data = await response.json();
-        allSongs = data.songs; // Save them here
-        renderSongs(allSongs); // Initial display
-    }
+        const icon = playPauseBtn.querySelector('i');
 
-    // 2. The Hook: Grab the input and listen
-    const searchInput = document.getElementById('searchInput');
-
-    searchInput.addEventListener('input', (event) => {
-        // Get what the user typed (converted to lowercase for easy matching)
-        const searchTerm = event.target.value.toLowerCase();
-
-        // The Filter: Find songs that match the search
-        const filteredSongs = allSongs.filter(song => 
-            song.title.toLowerCase().includes(searchTerm)
-        );
-
-        // Re-render the list with only the matches
-        renderSongs(filteredSongs);
+        if (player.paused) {
+            player.play();
+            icon.className = "fa-solid fa-pause";
+        } else {
+            player.pause();
+            icon.className = "fa-solid fa-play";
+        }
     });
 
-    // Helper function to handle the "Injection" logic from the previous puzzle
-    function renderSongs(songsToDisplay) {
-        const songList = document.getElementById('songList');
-        songList.innerHTML = ''; // Clear the old list first!
+    // wire up the volume slider
+    volumeSlider.addEventListener('input', (e) => {
+        player.volume = e.target.value;
+    });
 
-        songsToDisplay.forEach(song => {
-            const li = document.createElement("li");
-            li.innerText = song.title;
-            li.onclick = () => {
-                player.src = "/api/play/" + song.id;
-                player.play();
-            };
-            songList.appendChild(li);
-        });
+    const maximizeBtn = document.getElementById('maximizeBtn');
+    const closeBtn = document.getElementById('closeBtn');
+    const stickyPlayer = document.getElementById('stickyPlayer');
+
+    // Helper function to handle the toggle and UI state
+    function toggleMaximize() {
+        stickyPlayer.classList.toggle('maximized');
+        document.body.classList.toggle('is-maximized');
+
+        // If maximized, lock the scrolling and update icons
+        if (stickyPlayer.classList.contains('maximized')) {
+            document.body.style.overflow = "hidden";
+        } else {
+            document.body.style.overflow = "auto";
+        }
     }
-    */
+
+    // Hook both buttons to the exact same logic
+    maximizeBtn.addEventListener('click', toggleMaximize);
+    closeBtn.addEventListener('click', toggleMaximize);
+
+    const loopBtn = document.getElementById('loopBtn');
+    const randomBtn = document.getElementById('randomBtn');
+    let isRandom = false;
+
+    loopBtn.addEventListener('click', () => {
+        player.loop = !player.loop; // toggle true/false
+        loopBtn.classList.toggle('active-btn', player.loop);
+    });
+
+    randomBtn.addEventListener('click', () => {
+        isRandom = !isRandom;
+        randomBtn.classList.toggle('active-btn', isRandom);
+    })
+
+    const nextBtn = document.getElementById('nextBtn');
+    const prevBtn = document.getElementById('prevBtn');
+
+    function playNext() { //play next function
+        if (isRandom) {
+            // grab only the cards currently visible on screen
+            const visibleCards = Array.from(document.querySelectorAll('.song-card')).filter(card => card.style.display !== 'none');
+            if (visibleCards.length > 0) {
+                const randomIndex = Math.floor(Math.random() * visibleCards.length);
+                visibleCards[randomIndex].click();
+            }
+            return;
+        }
+
+        if (!currentSongLi) return; // do nothing if no song has been played yet
+
+        // look at the next card, but skip it if the search bar hid it
+        let nextLi = currentSongLi.nextElementSibling;
+        while (nextLi && nextLi.style.display === 'none') {
+            nextLi = nextLi.nextElementSibling;
+        }
+
+        if (nextLi) {
+            nextLi.click(); // simulate a human click
+        } else {
+            // if hitthe absolute bottom of the list, loop back the first visible song
+            const firstVisible = Array.from(document.querySelectorAll('.song-card')).find(card => card.style.display !== 'none');
+            if (firstVisible) firstVisible.click();
+        }
+    }
+
+    // wire up the next buttons
+    nextBtn.addEventListener('click', playNext);
+    
+    // wire up the previous button
+    prevBtn.addEventListener('click', () => {
+        if (!currentSongLi) return;
+
+        // if the song is past 3 seconds, previous will restart the song(standard spotify behavior)
+        if (player.currentTime > 3) {
+            player.currentTime = 0;
+            return;
+        }
+
+        // look at the previous card and skip the hidden ones
+        let prevLi = currentSongLi.previousElementSibling;
+        while (prevLi && prevLi.style.display === 'none') {
+            prevLi = prevLi.previousElementSibling;
+        }
+
+        // if there is a previous song, play it
+        if (prevLi) prevLi.click();
+    });
+
+    player.addEventListener('ended', () => {
+        if (player.loop) return; // Let the audio tag handle its own looping
+        playNext(); // Otherwise, fire master skip function
+    });
+
+    const progressBar = document.getElementById('progressBar');
+    const currentTimeText = document.getElementById('currentTime');
+    const totalTimeText = document.getElementById('totalTime');
+
+    // helper function to turn seconds into mm:ss format
+    function formatTime(seconds) {
+        if (isNaN(seconds)) return "0:00";
+        const mins = Math.floor(seconds / 60);
+        const secs = Math.floor(seconds % 60).toString().padStart(2, '0');
+        return `${mins}:${secs}`;
+    }
+
+    // get total duration when a new song loads
+    player.addEventListener('loadedmetadata', () => {
+        progressBar.max = player.duration;
+        totalTimeText.innerText = formatTime(player.duration);
+    });
+
+    // move the slider and update the clock as the song plays
+    player.addEventListener('timeupdate', () => {
+        progressBar.value = player.currentTime;
+        currentTimeText.innerText = formatTime(player.currentTime);
+    });
+
+    // change the song's actual time when user drags the slider
+    progressBar.addEventListener('input', () => {
+        player.currentTime = progressBar.value;
+    });
+
     fetchSongs();
 </script>
 

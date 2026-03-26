@@ -1,0 +1,102 @@
+/* --- BASE APP STYLES --- */
+body { font-family: sans-serif; background-color: #f5f5f5; padding: 20px; padding-bottom: 120px; max-width: 800px; margin: 0 auto; }
+#searchInput { width: 100%; padding: 12px; margin-bottom: 20px; font-size: 16px; border-radius: 8px; border: 1px solid #ccc; }
+#player { display: none; } /* Hide default browser audio element */
+
+/* --- SONG LIST & CARDS --- */
+#songList { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.song-card { display: flex; align-items: center; gap: 15px; padding: 10px; background: white; border-radius: 10px; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: transform 0.1s; }
+.song-card:hover { transform: scale(1.02); }
+.song-img { width: 60px; height: 60px; object-fit: cover; border-radius: 6px; background-color: #ddd; }
+.song-info h3 { margin: 0 0 4px 0; font-size: 16px; color: #333; }
+.song-info p { margin: 0; font-size: 14px; color: #777; }
+
+/* --- FILTER CHIPS --- */
+#filterChips { display: flex; gap: 10px; margin-bottom: 20px; }
+.chip { padding: 6px 16px; border: none; border-radius: 20px; background: #e0e0e0; cursor: pointer; font-size: 14px; transition: 0.2s; }
+.chip:hover { background: #d0d0d0; }
+.chip.active { background: #333; color: white; }
+
+/* --- BLURRED BACKGROUND --- */
+#blurBg {
+    position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+    background-size: cover; background-position: center;
+    filter: blur(25px) brightness(0.4);
+    z-index: 900; opacity: 0; transition: opacity 0.5s; pointer-events: none;
+    transform: scale(1.1); /* Hides white borders */
+}
+body.is-maximized #blurBg { opacity: 1; }
+
+/* ========================================= */
+/* --- MINIMIZED STICKY PLAYER (DEFAULT) --- */
+/* ========================================= */
+
+#stickyPlayer {
+    position: fixed; bottom: 0; left: 0; right: 0; margin: 0 auto;
+    max-width: 800px; height: 100px;
+    background: white; border-radius: 20px 20px 0 0;
+    box-shadow: 0 -10px 30px rgba(0,0,0,0.15);
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 0 30px; box-sizing: border-box; z-index: 1000;
+    transition: all 0.3s ease-in-out;
+}
+
+.max-only { display: none !important; }
+
+#playerInfo { display: flex; align-items: center; gap: 15px; width: 35%; flex-shrink: 1; }
+#playerImg { width: 70px; height: 70px; border-radius: 12px; object-fit: cover; background: #ddd; }
+.player-text h4 { margin: 0; font-size: 16px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #333; }
+.player-text p { margin: 0; font-size: 14px; color: #777; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+#controlCenter { display: flex; align-items: center; gap: 20px; width: 60%; justify-content: space-between; }
+
+/* Hide the 5 buttons and speaker icons when minimized */
+#stickyPlayer:not(.maximized) #mediaControls, 
+#stickyPlayer:not(.maximized) #volumeWrapper > i { display: none !important; }
+
+#progressWrapper { display: flex; align-items: center; gap: 10px; flex-grow: 1; padding: 0 10px; }
+#progressWrapper span { font-size: 12px; color: #777; width: 35px; text-align: center; }
+#progressBar { flex-grow: 1; cursor: pointer; }
+
+#stickyPlayer:not(.maximized) #volumeWrapper { width: 100px; }
+#volumeSlider { width: 100%; cursor: pointer; height: 3px; }
+
+/* Reset all button styles */
+#maximizeBtn, #closeBtn, #mediaControls button { background: none; border: none; font-size: 20px; cursor: pointer; color: #555; transition: 0.1s; }
+#maximizeBtn { margin-left: auto; }
+#playPauseBtn { font-size: 24px; color: #333 !important; }
+.active-btn { color: #1db954 !important; }
+
+/* ========================================= */
+/* --- MAXIMIZED STICKY PLAYER (GLASS) ---   */
+/* ========================================= */
+
+#stickyPlayer.maximized {
+    height: 100vh; max-width: 100%; border-radius: 0;
+    background: rgba(0, 0, 0, 0.4); backdrop-filter: blur(10px);
+    display: flex; flex-direction: column; justify-content: center;
+    padding: 60px; color: white;
+}
+
+#stickyPlayer.maximized .max-only { display: block !important; }
+#stickyPlayer.maximized .min-only { display: none !important; }
+
+#closeBtn { position: absolute; top: 40px; right: 40px; font-size: 30px; color: white; }
+
+#stickyPlayer.maximized #playerInfo { flex-direction: column; width: 100%; text-align: center; margin-bottom: 50px; }
+#stickyPlayer.maximized #playerImg { width: 350px; height: 350px; margin-bottom: 30px; border-radius: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.4); }
+#stickyPlayer.maximized .player-text h4 { font-size: 28px; color: white; white-space: normal; }
+#stickyPlayer.maximized .player-text p { font-size: 20px; color: #ddd; }
+
+#stickyPlayer.maximized #controlCenter { flex-direction: column; width: 100%; max-width: 500px; gap: 0px; justify-content: center; margin: 0 auto;}
+
+#stickyPlayer.maximized #progressWrapper { width: 100%; padding: 0; margin-bottom: 25px; }
+#stickyPlayer.maximized #progressWrapper span { color: white; }
+
+#stickyPlayer.maximized #mediaControls { display: flex; width: 100%; justify-content: center; gap: 30px; margin-bottom: 35px; }
+#stickyPlayer.maximized #mediaControls button { color: white; font-size: 22px; }
+#stickyPlayer.maximized #playPauseBtn { font-size: 40px; color: white !important; } /* Make play button larger */
+
+#stickyPlayer.maximized #volumeWrapper { display: flex; width: 100%; align-items: center; justify-content: center; gap: 15px; padding: 0; }
+#stickyPlayer.maximized #volumeWrapper i { display: block !important; color: white; font-size: 18px; }
+#stickyPlayer.maximized #volumeSlider { flex-grow: 1; max-width: 300px; }
