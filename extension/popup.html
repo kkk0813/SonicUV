@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        body {
+            width: 320px; 
+            margin: 0;
+            font-family: sans-serif;
+            color: white;
+            overflow: hidden; 
+        }
+        
+        #blurBg {
+            position: absolute; top: -10%; left: -10%; width: 120%; height: 120%;
+            background-size: cover; background-position: center;
+            background-color: #222; 
+            z-index: -1;
+        }
+
+        .glass-panel {
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.55);
+            display: flex; flex-direction: column; gap: 15px;
+            position: relative; /* Required so we can pin the button to the top right */
+        }
+
+        /* --- THE NEW SHORTCUT BUTTON --- */
+        #openWebBtn {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            color: #bbb;
+            padding: 5px;
+        }
+        #openWebBtn:hover {
+            color: #1db954; /* Lights up green on hover! */
+        }
+
+        .info { text-align: center; }
+        h4 { margin: 0 0 5px 0; font-size: 16px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        p { margin: 0; font-size: 13px; color: #ccc; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        
+        #progressWrapper { display: flex; align-items: center; gap: 10px; }
+        #progressWrapper span { font-size: 11px; color: #bbb; width: 30px; text-align: center; }
+        #progressBar { flex-grow: 1; cursor: pointer; height: 4px; accent-color: #1db954; }
+
+        .controls { display: flex; justify-content: center; align-items: center; gap: 20px; }
+        button { background: none; border: none; font-size: 16px; cursor: pointer; color: white; transition: 0.1s; }
+        button:hover { transform: scale(1.1); }
+        #playPauseBtn { font-size: 26px; }
+        
+        .active-btn { color: #1db954 !important; }
+    </style>
+</head>
+<body>
+    <div id="blurBg"></div>
+    
+    <div class="glass-panel">
+        <button id="openWebBtn" title="Open Web Player">
+            <i class="fa-solid fa-arrow-up-right-from-square"></i>
+        </button>
+
+        <div class="info">
+            <h4 id="songTitle">SonicUV</h4>
+            <p id="songArtist">Ready to play</p>
+        </div>
+        
+        <div id="progressWrapper">
+            <span id="currentTime">0:00</span>
+            <input type="range" id="progressBar" value="0" step="1">
+            <span id="totalTime">0:00</span>
+        </div>
+
+        <div class="controls">
+            <button id="randomBtn"><i class="fa-solid fa-shuffle"></i></button>
+            <button id="prevBtn"><i class="fa-solid fa-backward-step"></i></button>
+            <button id="playPauseBtn"><i class="fa-solid fa-play"></i></button>
+            <button id="nextBtn"><i class="fa-solid fa-forward-step"></i></button>
+            <button id="loopBtn"><i class="fa-solid fa-repeat"></i></button>
+        </div>
+    </div>
+
+    <script src="popup.js"></script>
+</body>
+</html>

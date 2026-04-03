@@ -1,31 +1,44 @@
 /* --- BASE APP STYLES --- */
 body { font-family: sans-serif; background-color: #f5f5f5; padding: 20px; padding-bottom: 120px; max-width: 800px; margin: 0 auto; }
-#searchInput { width: 100%; padding: 12px; margin-bottom: 20px; font-size: 16px; border-radius: 8px; border: 1px solid #ccc; }
-#player { display: none; } /* Hide default browser audio element */
 
 /* --- SONG LIST & CARDS --- */
-#songList { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 10px; }
-.song-card { display: flex; align-items: center; gap: 15px; padding: 10px; background: white; border-radius: 10px; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: transform 0.1s; }
-.song-card:hover { transform: scale(1.02); }
+#songList { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 10px; margin: 0; }
+.song-card { 
+    display: flex; align-items: center; gap: 15px; padding: 10px; 
+    background: rgba(255, 255, 255, 0.5); /* Slightly transparent to see the blur behind it */
+    backdrop-filter: blur(5px); /* Creates a frosted glass effect on the cards */
+    border-radius: 10px; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.2); 
+    transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease; 
+}
+.song-card:hover { 
+    transform: translateY(-2px) scale(1.01); 
+    box-shadow: 0 8px 20px rgba(0,0,0,0.3); 
+    background: rgba(255, 255, 255, 0.6); /* Brightens up when hovered */
+}
 .song-img { width: 60px; height: 60px; object-fit: cover; border-radius: 6px; background-color: #ddd; }
-.song-info h3 { margin: 0 0 4px 0; font-size: 16px; color: #333; }
-.song-info p { margin: 0; font-size: 14px; color: #777; }
+.song-info h3 { margin: 0 0 4px 0; font-size: 16px; color: #292929; }
+.song-info p { margin: 0; font-size: 14px; color: #484848; }
 
-/* --- FILTER CHIPS --- */
-#filterChips { display: flex; gap: 10px; margin-bottom: 20px; }
-.chip { padding: 6px 16px; border: none; border-radius: 20px; background: #e0e0e0; cursor: pointer; font-size: 14px; transition: 0.2s; }
-.chip:hover { background: #d0d0d0; }
-.chip.active { background: #333; color: white; }
+/* --- SEARCH BAR --- */
+.search-container { display: flex; max-width: 800px; margin: 10px 0 20px 0; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+#searchFilter { border: none; background: #89898986; padding: 10px 15px; font-weight: bold; outline: none; cursor: pointer; border-right: 1px solid #ddd; }
+#searchInput { flex-grow: 1; border: none; padding: 12px 15px; font-size: 16px; outline: none; background: #dfdfdf; }
 
 /* --- BLURRED BACKGROUND --- */
 #blurBg {
     position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+    background-color: #1a1a1a; /* Default dark background before a song is selected */
     background-size: cover; background-position: center;
-    filter: blur(25px) brightness(0.4);
-    z-index: 900; opacity: 0; transition: opacity 0.5s; pointer-events: none;
-    transform: scale(1.1); /* Hides white borders */
+    filter: blur(25px) brightness(0.35); /* Keeps text legible */
+    z-index: -1; 
+    opacity: 1; /* THE FIX: Always visible! */
+    transition: background-image 0.5s ease-in-out; /* Smooth transition when songs change */
+    pointer-events: none;
+    transform: scale(1.1); /* Hides the white blurry borders */
 }
-body.is-maximized #blurBg { opacity: 1; }
+body.is-maximized #blurBg { 
+    z-index: 900; /* Pulls the background forward to hide the song list when maximized */
+}
 
 /* ========================================= */
 /* --- MINIMIZED STICKY PLAYER (DEFAULT) --- */
@@ -34,36 +47,36 @@ body.is-maximized #blurBg { opacity: 1; }
 #stickyPlayer {
     position: fixed; bottom: 0; left: 0; right: 0; margin: 0 auto;
     max-width: 800px; height: 100px;
-    background: white; border-radius: 20px 20px 0 0;
+    background: rgb(218, 218, 218); border-radius: 20px 20px 0 0;
     box-shadow: 0 -10px 30px rgba(0,0,0,0.15);
     display: flex; justify-content: space-between; align-items: center;
-    padding: 0 30px; box-sizing: border-box; z-index: 1000;
+    padding: 0 20px; box-sizing: border-box; z-index: 1000;
     transition: all 0.3s ease-in-out;
 }
 
 .max-only { display: none !important; }
 
-#playerInfo { display: flex; align-items: center; gap: 15px; width: 35%; flex-shrink: 1; }
-#playerImg { width: 70px; height: 70px; border-radius: 12px; object-fit: cover; background: #ddd; }
+/* Text Ellipsis Fix */
+#playerInfo { display: flex; align-items: center; gap: 15px; width: 35%; min-width: 0; /* min-width 0 is critical for flexbox truncating */ }
+#playerImg { width: 70px; height: 70px; border-radius: 12px; object-fit: cover; background: #ddd; flex-shrink: 0; }
+.player-text { flex: 1; min-width: 0; }
 .player-text h4 { margin: 0; font-size: 16px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #333; }
 .player-text p { margin: 0; font-size: 14px; color: #777; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-#controlCenter { display: flex; align-items: center; gap: 20px; width: 60%; justify-content: space-between; }
+#controlCenter { display: flex; align-items: center; gap: 15px; flex-grow: 1; justify-content: space-between; min-width: 0; }
 
-/* Hide the 5 buttons and speaker icons when minimized */
 #stickyPlayer:not(.maximized) #mediaControls, 
 #stickyPlayer:not(.maximized) #volumeWrapper > i { display: none !important; }
 
-#progressWrapper { display: flex; align-items: center; gap: 10px; flex-grow: 1; padding: 0 10px; }
-#progressWrapper span { font-size: 12px; color: #777; width: 35px; text-align: center; }
-#progressBar { flex-grow: 1; cursor: pointer; }
+#progressWrapper { display: flex; align-items: center; gap: 10px; flex-grow: 1; padding: 0 10px; min-width: 0; }
+#progressWrapper span { font-size: 12px; color: #777; width: 35px; text-align: center; flex-shrink: 0; }
+#progressBar { flex-grow: 1; cursor: pointer; min-width: 50px; }
 
-#stickyPlayer:not(.maximized) #volumeWrapper { width: 100px; }
+#stickyPlayer:not(.maximized) #volumeWrapper { width: 100px; flex-shrink: 0; display: flex; align-items: center; }
 #volumeSlider { width: 100%; cursor: pointer; height: 3px; }
 
-/* Reset all button styles */
-#maximizeBtn, #closeBtn, #mediaControls button { background: none; border: none; font-size: 20px; cursor: pointer; color: #555; transition: 0.1s; }
-#maximizeBtn { margin-left: auto; }
+#maximizeBtn, #closeBtn, #mediaControls button { background: none; border: none; font-size: 20px; cursor: pointer; color: #555; transition: 0.1s; flex-shrink: 0; }
+#maximizeBtn { margin-left: 10px; }
 #playPauseBtn { font-size: 24px; color: #333 !important; }
 .active-btn { color: #1db954 !important; }
 
@@ -73,7 +86,7 @@ body.is-maximized #blurBg { opacity: 1; }
 
 #stickyPlayer.maximized {
     height: 100vh; max-width: 100%; border-radius: 0;
-    background: rgba(0, 0, 0, 0.4); backdrop-filter: blur(10px);
+    background: rgba(0, 0, 0, 0.4); backdrop-filter: blur(15px);
     display: flex; flex-direction: column; justify-content: center;
     padding: 60px; color: white;
 }
@@ -88,14 +101,14 @@ body.is-maximized #blurBg { opacity: 1; }
 #stickyPlayer.maximized .player-text h4 { font-size: 28px; color: white; white-space: normal; }
 #stickyPlayer.maximized .player-text p { font-size: 20px; color: #ddd; }
 
-#stickyPlayer.maximized #controlCenter { flex-direction: column; width: 100%; max-width: 500px; gap: 0px; justify-content: center; margin: 0 auto;}
+#stickyPlayer.maximized #controlCenter { flex-direction: column; width: 100%; max-width: 600px; gap: 0px; justify-content: center; margin: 0 auto; }
 
 #stickyPlayer.maximized #progressWrapper { width: 100%; padding: 0; margin-bottom: 25px; }
 #stickyPlayer.maximized #progressWrapper span { color: white; }
 
 #stickyPlayer.maximized #mediaControls { display: flex; width: 100%; justify-content: center; gap: 30px; margin-bottom: 35px; }
 #stickyPlayer.maximized #mediaControls button { color: white; font-size: 22px; }
-#stickyPlayer.maximized #playPauseBtn { font-size: 40px; color: white !important; } /* Make play button larger */
+#stickyPlayer.maximized #playPauseBtn { font-size: 40px; color: white !important; }
 
 #stickyPlayer.maximized #volumeWrapper { display: flex; width: 100%; align-items: center; justify-content: center; gap: 15px; padding: 0; }
 #stickyPlayer.maximized #volumeWrapper i { display: block !important; color: white; font-size: 18px; }

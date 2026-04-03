@@ -5,19 +5,22 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="./assets/css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <title>Document</title>
+    <title>SonicUV</title>
 </head>
 <body>
     <div id="blurBg"></div>
-    <input type="text" id="searchInput">
-    <div id="filterChips">
-        <button class="chip active" data-filter="all">All</button>
-        <button class="chip" data-filter="artist">Artist</button>
-        <button class="chip" data-filter="title">Title</button>
-        <button class="chip" data-filter="tags">Tags</button>
+    
+    <div class="search-container">
+        <select id="searchFilter">
+            <option value="all">All</option>
+            <option value="artist">Artist</option>
+            <option value="title">Title</option>
+            <option value="tags">Tags</option>
+        </select>
+        <input type="text" id="searchInput" placeholder="Search your library...">
     </div>
+    
     <ul id="songList"></ul>
-    <audio src="" id="player"></audio>
 
     <div id="stickyPlayer">
         <button id="closeBtn" class="max-only"><i class="fa-solid fa-xmark"></i></button>
@@ -29,8 +32,6 @@
                 <p id="playerArtist">-</p>
             </div>
         </div>
-
-        <audio src="" id="player"></audio>
         
         <div id="controlCenter">
             <div id="progressWrapper">
@@ -56,226 +57,114 @@
 
         <button id="maximizeBtn" class="min-only"><i class="fa-solid fa-expand"></i></button>
     </div>
-</body>
 
 <script>
-    let currentFilter = 'all';
-    let currentSongLi = null;
-    const player = document.getElementById('player'); // grab the hidden audio element
+    let allSongsData = [];
+    let filteredSongsData = [];
+    let renderIndex = 0;
+    const chunkSize = 50;
 
-    function performSearch() {
-        const searchTerm = searchInput.value.toLowerCase();
-        const allSongs = songList.getElementsByTagName('li');
-
-        for (let i = 0; i < allSongs.length; i++) {
-            const li = allSongs[i];
-            const t = li.dataset.title;
-            const a = li.dataset.artist;
-            const tags = li.dataset.tags;
-
-            let isMatch = false;
-            let weight = 4; // default lowest priority
-
-            if (currentFilter === 'all') { // check based on the active filter
-                if (a.includes(searchTerm)) { isMatch = true; weight = 1;} // highest priority
-                else if (t.includes(searchTerm)) { isMatch = true; weight = 2;}
-                else if (tags.includes(searchTerm)) { isMatch = true; weight = 3;}
-            }
-            else if (currentFilter === 'artist' && a.includes(searchTerm)) {
-                isMatch = true; weight = 1;
-            }
-            else if (currentFilter === 'title' && t.includes(searchTerm)) {
-                isMatch = true; weight = 1;
-            }
-            else if (currentFilter === 'tags' && tags.includes(searchTerm)) {
-                isMatch = true; weight = 1;
-            }
-
-            if (isMatch || searchTerm === '') {
-                li.style.display = '';
-                li.style.order = weight; // set the order based on the weight
-            }
-            else {
-                li.style.display = 'none';
-            }
-        }
+    // --- 1. THE BRIDGE TRANSMITTER ---
+    function sendToExtension(actionName, extraData = {}) {
+        window.postMessage({
+            direction: "from-page-to-extension",
+            message: { target: 'offscreen', action: actionName, ...extraData }
+        }, window.origin);
     }
 
+    // --- 2. THE VIRTUAL SCROLL & SEARCH ENGINE ---
     async function fetchSongs() {
         const response = await fetch('/api/songs');
         const data = await response.json();
-        const songList = document.getElementById('songList');
-        const searchInput = document.getElementById('searchInput'); // grab the input in search bar and listen
-    
-        data.songs.forEach(song => {
-            const li = document.createElement("li");    // create new <li> for each song
-            li.className = "song-card";
-            li.dataset.title = song.title.toLowerCase();
-            li.dataset.artist = song.artist.toLowerCase();
-            li.dataset.tags = song.tags.toLowerCase();
-            li.innerHTML = `
-                <img src="/api/image/${song.id}" class="song-img" loading="lazy" onerror="this.src=''">
-                <div class="song-info">
-                    <h3>${song.title}</h3>
-                    <p>${song.artist}</p>
-                </div>
-            `;
+        allSongsData = data.songs;
+        filteredSongsData = allSongsData; // Start by showing all songs
 
-            // the click event
-            li.onclick = () => {
-                currentSongLi = li;
-                player.src = "/api/play/" + song.id;
-                player.play();
+        renderNextBatch();
+        setupObserver();
 
-                const icon = document.querySelector('#playPauseBtn i');
-
-                document.getElementById('blurBg').style.backgroundImage = `url('/api/image/${song.id}')`;
-                document.getElementById('playerTitle').innerText = song.title;
-                document.getElementById('playerArtist').innerText = song.artist;
-                document.getElementById('playerImg').src = `/api/image/${song.id}`;
-                icon.className = "fa-solid fa-pause"; 
-                document.getElementById('loopBtn').classList.toggle('active-btn', player.loop);
-            };
-            // the injection: add it to <ul> bucket
-            songList.appendChild(li);
-        });
-        
-        const chips = document.querySelectorAll('.chip');
-
-        chips.forEach(chip => {
-            chip.addEventListener('click', (e) => {
-                chips.forEach(c => c.classList.remove('active')); // remove active class from all chips, add to the clicked one
-                e.target.classList.add('active');
-
-                currentFilter = e.target.dataset.filter; // update the filter state and re-trigger the search
-                performSearch();
-            });
-        });
-        searchInput.addEventListener('input', performSearch);
-    }
-    
-    const playPauseBtn = document.getElementById('playPauseBtn');
-    const volumeSlider = document.getElementById('volumeSlider');
-
-    // wire up the play/pause logic
-    playPauseBtn.addEventListener('click', () => {
-        if (player.src === "") return; // do nothing if no song is loaded
-
-        const icon = playPauseBtn.querySelector('i');
-
-        if (player.paused) {
-            player.play();
-            icon.className = "fa-solid fa-pause";
-        } else {
-            player.pause();
-            icon.className = "fa-solid fa-play";
-        }
-    });
-
-    // wire up the volume slider
-    volumeSlider.addEventListener('input', (e) => {
-        player.volume = e.target.value;
-    });
-
-    const maximizeBtn = document.getElementById('maximizeBtn');
-    const closeBtn = document.getElementById('closeBtn');
-    const stickyPlayer = document.getElementById('stickyPlayer');
-
-    // Helper function to handle the toggle and UI state
-    function toggleMaximize() {
-        stickyPlayer.classList.toggle('maximized');
-        document.body.classList.toggle('is-maximized');
-
-        // If maximized, lock the scrolling and update icons
-        if (stickyPlayer.classList.contains('maximized')) {
-            document.body.style.overflow = "hidden";
-        } else {
-            document.body.style.overflow = "auto";
-        }
+        // Wire up the new Dropdown and Search Bar
+        document.getElementById('searchInput').addEventListener('input', performSearch);
+        document.getElementById('searchFilter').addEventListener('change', performSearch);
     }
 
-    // Hook both buttons to the exact same logic
-    maximizeBtn.addEventListener('click', toggleMaximize);
-    closeBtn.addEventListener('click', toggleMaximize);
+    function createSongElement(song) {
+        const li = document.createElement("li");
+        li.className = "song-card";
+        li.innerHTML = `
+            <img src="/api/image/${song.id}" class="song-img" loading="lazy" onerror="this.src=''">
+            <div class="song-info">
+                <h3>${song.title}</h3>
+                <p>${song.artist}</p>
+            </div>
+        `;
+        li.onclick = () => sendToExtension('playSpecific', { id: song.id });
+        return li;
+    }
 
-    const loopBtn = document.getElementById('loopBtn');
-    const randomBtn = document.getElementById('randomBtn');
-    let isRandom = false;
+    function renderNextBatch() {
+        const list = document.getElementById('songList');
+        const end = Math.min(renderIndex + chunkSize, filteredSongsData.length);
 
-    loopBtn.addEventListener('click', () => {
-        player.loop = !player.loop; // toggle true/false
-        loopBtn.classList.toggle('active-btn', player.loop);
-    });
+        for (let i = renderIndex; i < end; i++) {
+            list.appendChild(createSongElement(filteredSongsData[i]));
+        }
+        renderIndex = end;
+    }
 
-    randomBtn.addEventListener('click', () => {
-        isRandom = !isRandom;
-        randomBtn.classList.toggle('active-btn', isRandom);
-    })
+    function setupObserver() {
+        const trigger = document.createElement('div');
+        trigger.id = "scrollTrigger";
+        trigger.style.height = "20px"; // Invisible trigger box
+        document.getElementById('songList').after(trigger);
 
-    const nextBtn = document.getElementById('nextBtn');
-    const prevBtn = document.getElementById('prevBtn');
-
-    function playNext() { //play next function
-        if (isRandom) {
-            // grab only the cards currently visible on screen
-            const visibleCards = Array.from(document.querySelectorAll('.song-card')).filter(card => card.style.display !== 'none');
-            if (visibleCards.length > 0) {
-                const randomIndex = Math.floor(Math.random() * visibleCards.length);
-                visibleCards[randomIndex].click();
+        const observer = new IntersectionObserver((entries) => {
+            if (entries[0].isIntersecting && renderIndex < filteredSongsData.length) {
+                renderNextBatch();
             }
-            return;
-        }
-
-        if (!currentSongLi) return; // do nothing if no song has been played yet
-
-        // look at the next card, but skip it if the search bar hid it
-        let nextLi = currentSongLi.nextElementSibling;
-        while (nextLi && nextLi.style.display === 'none') {
-            nextLi = nextLi.nextElementSibling;
-        }
-
-        if (nextLi) {
-            nextLi.click(); // simulate a human click
-        } else {
-            // if hitthe absolute bottom of the list, loop back the first visible song
-            const firstVisible = Array.from(document.querySelectorAll('.song-card')).find(card => card.style.display !== 'none');
-            if (firstVisible) firstVisible.click();
-        }
+        });
+        observer.observe(trigger);
     }
 
-    // wire up the next buttons
-    nextBtn.addEventListener('click', playNext);
-    
-    // wire up the previous button
-    prevBtn.addEventListener('click', () => {
-        if (!currentSongLi) return;
+    function performSearch() {
+        const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+        const currentFilter = document.getElementById('searchFilter').value;
 
-        // if the song is past 3 seconds, previous will restart the song(standard spotify behavior)
-        if (player.currentTime > 3) {
-            player.currentTime = 0;
-            return;
-        }
+        // Filter the raw data, NOT the HTML elements
+        filteredSongsData = allSongsData.filter(song => {
+            const t = song.title.toLowerCase();
+            const a = song.artist.toLowerCase();
+            const tags = song.tags.toLowerCase();
 
-        // look at the previous card and skip the hidden ones
-        let prevLi = currentSongLi.previousElementSibling;
-        while (prevLi && prevLi.style.display === 'none') {
-            prevLi = prevLi.previousElementSibling;
-        }
+            if (currentFilter === 'all') return a.includes(searchTerm) || t.includes(searchTerm) || tags.includes(searchTerm);
+            if (currentFilter === 'artist') return a.includes(searchTerm);
+            if (currentFilter === 'title') return t.includes(searchTerm);
+            if (currentFilter === 'tags') return tags.includes(searchTerm);
+            return true;
+        });
 
-        // if there is a previous song, play it
-        if (prevLi) prevLi.click();
-    });
+        // Nuke the list and render the first 50 results
+        document.getElementById('songList').innerHTML = '';
+        renderIndex = 0;
+        renderNextBatch();
+    }
 
-    player.addEventListener('ended', () => {
-        if (player.loop) return; // Let the audio tag handle its own looping
-        playNext(); // Otherwise, fire master skip function
-    });
+    // --- 3. WIRING UP BUTTONS ---
+    document.getElementById('playPauseBtn').addEventListener('click', () => sendToExtension('playPause'));
+    document.getElementById('nextBtn').addEventListener('click', () => sendToExtension('next'));
+    document.getElementById('prevBtn').addEventListener('click', () => sendToExtension('previous'));
+    document.getElementById('randomBtn').addEventListener('click', () => sendToExtension('toggleRandom'));
+    document.getElementById('loopBtn').addEventListener('click', () => sendToExtension('toggleLoop'));
 
     const progressBar = document.getElementById('progressBar');
+    progressBar.addEventListener('input', () => sendToExtension('seek', { time: progressBar.value }));
+
+    const volumeSlider = document.getElementById('volumeSlider');
+    volumeSlider.addEventListener('input', (e) => sendToExtension('setVolume', { volume: e.target.value }));
+
+    // --- 4. THE BRIDGE RECEIVER ---
     const currentTimeText = document.getElementById('currentTime');
     const totalTimeText = document.getElementById('totalTime');
 
-    // helper function to turn seconds into mm:ss format
     function formatTime(seconds) {
         if (isNaN(seconds)) return "0:00";
         const mins = Math.floor(seconds / 60);
@@ -283,24 +172,52 @@
         return `${mins}:${secs}`;
     }
 
-    // get total duration when a new song loads
-    player.addEventListener('loadedmetadata', () => {
-        progressBar.max = player.duration;
-        totalTimeText.innerText = formatTime(player.duration);
+    window.addEventListener("message", (event) => {
+        if (event.source !== window || event.origin !== window.origin) return;
+
+        if (event.data.direction === "bridge-ready") sendToExtension('requestState');
+
+        if (event.data.direction === "from-extension-to-page") {
+            const message = event.data.message;
+
+            if (message.action === 'updateUI') {
+                document.getElementById('playerTitle').innerText = message.title;
+                document.getElementById('playerArtist').innerText = message.artist;
+                document.getElementById('playerImg').src = `/api/image/${message.imageId}`;
+                document.getElementById('blurBg').style.backgroundImage = `url('/api/image/${message.imageId}')`;
+                
+                document.getElementById('playPauseBtn').innerHTML = message.isPlaying 
+                    ? '<i class="fa-solid fa-pause"></i>' 
+                    : '<i class="fa-solid fa-play"></i>';
+
+                document.getElementById('randomBtn').classList.toggle('active-btn', message.isRandom);
+                document.getElementById('loopBtn').classList.toggle('active-btn', message.isLooping);
+            }
+
+            if (message.action === 'timeUpdate') {
+                progressBar.max = message.duration;
+                progressBar.value = message.currentTime;
+                currentTimeText.innerText = formatTime(message.currentTime);
+                totalTimeText.innerText = formatTime(message.duration);
+            }
+        }
     });
 
-    // move the slider and update the clock as the song plays
-    player.addEventListener('timeupdate', () => {
-        progressBar.value = player.currentTime;
-        currentTimeText.innerText = formatTime(player.currentTime);
-    });
+    // --- 5. MAXIMIZE LOGIC ---
+    const maximizeBtn = document.getElementById('maximizeBtn');
+    const closeBtn = document.getElementById('closeBtn');
+    const stickyPlayer = document.getElementById('stickyPlayer');
 
-    // change the song's actual time when user drags the slider
-    progressBar.addEventListener('input', () => {
-        player.currentTime = progressBar.value;
-    });
+    function toggleMaximize() {
+        stickyPlayer.classList.toggle('maximized');
+        document.body.classList.toggle('is-maximized');
+        document.body.style.overflow = stickyPlayer.classList.contains('maximized') ? "hidden" : "auto";
+    }
+
+    maximizeBtn.addEventListener('click', toggleMaximize);
+    closeBtn.addEventListener('click', toggleMaximize);
 
     fetchSongs();
 </script>
-
+</body>
 </html>

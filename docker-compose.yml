@@ -4,4 +4,4 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - "C:/Users/khong/AppData/Local/osu!/Songs/:/music:ro"
+      - "${LOCALAPPDATA}/osu!/Songs/:/music:ro"

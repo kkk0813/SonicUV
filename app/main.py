@@ -7,11 +7,11 @@ import os
 app = FastAPI()
 
 song_db = {}
-MUSIC_DIR = Path("/music") # uncomment it when running docker compose up --build
-# MUSIC_DIR = Path(r"C:/Users/khong/AppData/Local/osu!/Songs/") # for local development
+MUSIC_DIR = Path(os.getenv("MUSIC_DIR", "/music"))
 
 def build_database():
     global song_db
+    song_db.clear() # clear it in case of reload
 
     print("Getting songs, please wait...")
     raw_song_folders = [
@@ -19,10 +19,13 @@ def build_database():
         if f.suffix.lower() in [".mp3", ".ogg"] # check for mp3 and ogg extensions
         and f.stat().st_size > 1024 * 1024       # file files with > 1MB to filter out hitsounds
     ]
-    unique_songs = sorted(list(set(raw_song_folders)))
+    unique_folders = sorted(list(set(raw_song_folders)))
 
-    for index, folder_name in enumerate(unique_songs, start=1):
-        folder_path = MUSIC_DIR / folder_name # create a path object for the specific song(folder_name is a string)
+    seen_songs = set() # A set to track "artist - title" combos we've already added
+    current_id = 1     # We control the ID manually now
+
+    for folder_name in unique_folders:
+        folder_path = MUSIC_DIR / folder_name 
         osu_file = next(folder_path.glob("*.osu"), None)
         metadata = {
             "folder": folder_name,
@@ -31,7 +34,7 @@ def build_database():
             "tags": "",
             "image_file": ""
         }
-        if(osu_file): # fix nonetype error if no .osu file is found
+        if osu_file: # fix nonetype error if no .osu file is found
             with osu_file.open(mode="r", encoding="utf-8") as f:
                 for line in f:
                     line = line.strip() # clean up newline characters
@@ -51,13 +54,21 @@ def build_database():
                         metadata["image_file"] = line.split(",")[2].strip('"')
                                         
                     # Optimization: .osu files have thousands of lines of map coordinates at the bottom.
-                    # Once we hit the [Difficulty], [Events] or [TimingPoints] section, we have all the metadata we need.
+                    # Once we hit the [TimingPoints] section, we have all the metadata we need.
                     if line == "[TimingPoints]":
                         break
 
-        song_db[index] = metadata
+        # --- THE DEDUPLICATION LOGIC ---
+        # Create a unique fingerprint for the song (e.g., "yorushika - blur")
+        unique_key = f"{metadata['artist'].lower()} - {metadata['title'].lower()}"
 
-    print(f"Success! Loaded {len(song_db)} songs into memory.")
+        # Only add it to the database if we haven't seen this exact song yet
+        if unique_key not in seen_songs:
+            seen_songs.add(unique_key)       # Mark it as seen
+            song_db[current_id] = metadata   # Save to DB
+            current_id += 1                  # Increment the ID for the next unique song
+
+    print(f"Success! Loaded {len(song_db)} unique songs into memory.")
 
 build_database() # run the setup immediately when the file loads
 

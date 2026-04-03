@@ -1,0 +1,34 @@
+{
+  "manifest_version": 3,
+  "name": "SonicUV Controller",
+  "version": "1.0",
+  "description": "A remote control for your local SonicUV music server.",
+  
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Open SonicUV"
+  },
+  
+  "background": {
+    "service_worker": "background.js"
+  },
+  
+  "permissions": [
+    "offscreen" 
+  ],
+
+  "host_permissions": [
+    "http://localhost:8000/*",
+    "http://127.0.0.1:8000/*"
+  ],
+  
+  "content_scripts": [
+    {
+      "matches": [
+      "http://localhost:8000/*",
+      "http://127.0.0.1:8000/*"
+      ],
+      "js": ["content.js"]
+    }
+  ]
+}
